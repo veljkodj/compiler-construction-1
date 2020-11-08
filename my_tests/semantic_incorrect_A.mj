@@ -1,0 +1,81 @@
+program MJProgram
+
+	class Book {
+	}
+
+	const int abcd = 29;
+	
+	// #1
+	Car c;
+	
+	const int apple = 1;
+	// #2
+	apple a;
+	
+	const int x = 7;
+	// #3
+	const char x = 'a';
+	
+	// #4
+	const boolean booring = 'c';
+	
+	boolean globVar;
+	
+	boolean flegovi[];
+	
+{
+
+	char getChar() 
+	{
+		return 'a';
+	}
+
+	// #5
+	void main(char c)
+		int z, nizcina[];
+		int r, a[];
+		Book b;
+	{
+	
+		// #6
+		crvenaZvezda = 1;
+		
+		// #7
+		z = true;
+		
+		// #8 (many errors)
+		z =  2 * getChar() + globVar * 89 + (7*9 + 'r') + new int[10];
+		
+		// #9
+		nizcina = new int[2 + '2'];
+		
+		// #10
+		z = nizcina[true];
+		
+		// #11
+		a[r] = x+3 *= x * r * a[4] * abcd;
+		
+		// #12
+		x = a[1] *= abcd /= a[1];
+		
+		// #13
+		abcd = 4444;
+		
+		// #14
+		read(abcd);
+		
+		// #15
+		read(b);
+		
+		// #16
+		print(b);
+		
+		// #17
+		b--;
+		
+		// #18
+		abcd++;
+		
+	}
+	
+}

@@ -1,0 +1,559 @@
+package rs.ac.bg.etf.pp1;
+
+import java_cup.runtime.*;
+import org.apache.log4j.*;
+import rs.ac.bg.etf.pp1.ast.*;
+
+parser code {:
+    
+    boolean errorDetected = false;
+    Logger log = Logger.getLogger(getClass());
+   
+    // redefined methods for error notification
+     
+    public void report_fatal_error(String message, Object info) throws java.lang.Exception {
+      done_parsing();
+      report_error(message, info);
+    }
+  
+    public void syntax_error(Symbol cur_token) {
+        report_error("\nSyntax error", cur_token);
+    }
+  
+    public void unrecovered_syntax_error(Symbol cur_token) throws java.lang.Exception {
+        report_fatal_error("Fatal error, parsing can not be continued", cur_token);
+    }
+
+    public void report_error(String message, Object info) {
+        errorDetected = true;
+        StringBuilder msg = new StringBuilder(message); 
+        if (info instanceof Symbol)
+            msg.append (" on line ").append(((Symbol)info).left);
+        log.error(msg.toString());
+    }
+    
+    public void report_info(String message, Object info) {
+        StringBuilder msg = new StringBuilder(message); 
+        if (info instanceof Symbol)
+            msg.append (" on line ").append(((Symbol)info).left);
+        log.info(msg.toString());
+    }
+    
+:}
+
+init with {:
+    errorDetected = false;
+:}
+
+scan with {:
+    Symbol s = this.getScanner().next_token();
+    if (s != null && s.value != null) 
+        log.info(s.toString() + " " + s.value.toString());
+    return s;
+:}
+
+/* Terminals */
+terminal 
+        PROG, 
+        LBRACE, 
+        RBRACE,
+        CONST,
+        SEMI,
+        ASSIGN,
+        COMMA,
+        VOID,
+        LBOXBR,
+        RBOXBR,
+        LPAREN,
+        RPAREN,
+        ELSE,
+        FOR,
+        IF,
+        RETURN,
+        BREAK,
+        CONTINUE,
+        READ,
+        PRINT,
+        CLASS,
+        EXTENDS,
+        ABSTRACT,
+        INC,
+        DEC,
+        AND,
+        OR,
+        MINUS,
+        NEW,
+        DOT,
+        EQUAL,
+        NOT_EQUAL,
+        GRT,
+        GRTE,
+        LESS,
+        LESSE,
+        PLUS,
+        MUL,
+        DIV,
+        MOD,
+        PLUS_ASSIGN,
+        MINUS_ASSIGN,
+        MUL_ASSIGN,
+        DIV_ASSIGN,
+        MOD_ASSIGN
+        ;
+terminal Integer NUMBER;
+terminal String IDENT;
+terminal Integer BOOL;
+terminal Character CHAR;
+         
+/* Nonterminals */
+nonterminal 
+            NonMethodDeclList, 
+            MethodDeclList, 
+            NonMethodDeclListPart, 
+            ConstDecl,
+            VarDecl,
+            MethodDecl,
+            ConstList,
+            ConstListPart,
+            VarDeclList,
+            VarDeclListPart,
+            ReturnType,
+            FormPars,
+            FormParsList,
+            FormPar,
+            MethodVarDeclList,
+            MethodStatementList,
+            Statement,
+            DesignatorStatement,
+            ForDesignStmt,
+            ForCond,
+            ElseStatement,
+            PrintOptional,
+            StmtList,
+            ClassDecl,
+            OptionalExtend,
+            ClassVarDeclList,
+            OptionalClassMethodDeclList,
+            AbstractClassDecl,
+            AbstractMethodDecl,
+            OptionalAbstractClassMethodDeclList,
+            AbstractClassMethodDeclList,
+            AbstractClassMethodDeclPart,
+            Assignop,
+            OptionalActPars,
+            ActPars,
+            ExprList,
+            Relop,
+            MulopLeft,
+            AddopLeft,
+            AddopRight,
+            MulopRight,
+            ForLoopEmpty
+            ;
+
+nonterminal rs.etf.pp1.symboltable.concepts.Struct ConstType, 
+                                                   Type;
+                                                   
+nonterminal rs.etf.pp1.symboltable.concepts.Obj Program,
+                                                ProgName,
+                                                ClassName,
+                                                AbstractClassName,
+                                                MethodDeclName,
+                                                Factor,
+                                                Term,
+                                                FirstTerm,
+                                                Expr,
+                                                Designator,
+                                                DesignatorArr,
+                                                TermList,
+                                                TermListExt,
+                                                DesignatorAssign,
+                                                CondTermList,
+                                                CondTerm,
+                                                CondFact,
+                                                Condition
+                                                ;
+        
+/* Precedence */
+precedence left ELSE;
+
+Program ::= (Program) PROG ProgName:p NonMethodDeclList LBRACE MethodDeclList RBRACE 
+        ;
+        
+ProgName ::= (ProgName) IDENT:progName
+        ;
+
+NonMethodDeclList ::= 
+                        (NonMethodDeclarationList) NonMethodDeclList NonMethodDeclListPart 
+                    | 
+                        (NoNonMethodDeclarationList) /*epsilon*/
+                    ;
+
+NonMethodDeclListPart ::= 
+                        (ConstDeclPart) ConstDecl 
+                    | 
+                        (VarDeclPart) VarDecl
+                    |
+                        (AbstractClassDeclPart) AbstractClassDecl
+                    |
+                        (ClassDeclPart) ClassDecl
+                    ;
+                      
+ConstDecl ::= (ConstDecl) CONST Type:constType ConstList SEMI
+          ;
+          
+ConstList ::= 
+                (Constants) ConstList COMMA ConstListPart 
+            |     
+                (ConstantsMember) ConstListPart
+            ;
+
+ConstListPart ::= (ConstListPart) IDENT:constName ASSIGN ConstType
+            ;
+              
+ConstType ::=
+                (ConstChar) CHAR:constChar
+            |
+                (ConstBool) BOOL:constBool
+            |
+                (ConstNumber) NUMBER:constNumber
+            ;
+          
+VarDecl ::= 
+            (VarDeclaration) Type:varType VarDeclList SEMI
+        |
+            (ErrorVarDeclaration) error SEMI:l
+            {: parser.report_error("Recovery made when declaring variable(s) on line " + lleft, null); :}
+        ;
+        
+VarDeclList ::= 
+                (VarDeclarations) VarDeclList COMMA VarDeclListPart
+            |
+                (VarDeclarationsMember) VarDeclListPart
+            ;
+            
+VarDeclListPart ::= 
+                    (Var) IDENT:varName 
+                |
+                    (VarArray) IDENT:arrayName LBOXBR RBOXBR
+                ;
+            
+ClassDecl ::= (ClassDecl) CLASS ClassName OptionalExtend LBRACE ClassVarDeclList OptionalClassMethodDeclList RBRACE
+        ;
+          
+ClassName ::= (ClassName) IDENT:className
+        ;
+
+OptionalExtend ::= 
+                    (Extend) EXTENDS Type:baseClass
+                |
+                    (NoExtend) /*epsilon*/
+                ;
+
+ClassVarDeclList ::= 
+                    (ClassVarDeclarationList) ClassVarDeclList VarDecl
+                    |
+                    (NoClassVarDeclarationList) /*epsilon*/
+                    ;
+
+OptionalClassMethodDeclList ::= 
+                                (ClassMethodDeclListDefinition) LBRACE MethodDeclList RBRACE
+                            |
+                                (NoClassMethodDeclListDefinition) /*epsilon*/
+                            ;
+                            
+AbstractClassDecl ::= (AbstractClassDecl) ABSTRACT CLASS AbstractClassName OptionalExtend LBRACE ClassVarDeclList OptionalAbstractClassMethodDeclList RBRACE
+                ;
+                  
+AbstractClassName ::= (AbstractClassName) IDENT:absClassName
+                ;
+
+OptionalAbstractClassMethodDeclList ::=
+                                        (AbstractClassMethodDeclListDefinition) LBRACE AbstractClassMethodDeclList RBRACE
+                                    |
+                                        (NoAbstractClassMethodDeclListDefinition) /*epsilon*/
+                                    ;
+                                    
+AbstractClassMethodDeclList ::=
+                                (AbstractClassMethodDeclarations) AbstractClassMethodDeclList AbstractClassMethodDeclPart
+                            |
+                                (NoAbstractClassMethodDeclarations) /*epsilon*/
+                            ;
+                            
+AbstractClassMethodDeclPart ::= 
+                                (AbstractClassMethodDeclPartMethod) MethodDecl 
+                            | 
+                                (AbstractClassMethodDeclPartAbstractMethod) AbstractMethodDecl 
+                            ;
+
+MethodDeclList ::= 
+                    (MethodDeclarationList) MethodDeclList MethodDecl 
+                | 
+                    (NoMethodDeclarationList) /*epsilon*/
+                ;
+
+MethodDecl ::= (MethodDecl) ReturnType MethodDeclName LPAREN FormPars RPAREN MethodVarDeclList LBRACE MethodStatementList RBRACE
+            ;
+           
+MethodDeclName ::= (MethodDeclName) IDENT:methName 
+                ;
+            
+ReturnType ::= 
+                (ReturnNonVoid) Type:retType
+            | 
+                (ReturnVoid) VOID:retVoid
+            ;
+           
+AbstractMethodDecl ::= (AbstractMethodDecl) ABSTRACT ReturnType IDENT:absMethName LPAREN FormPars RPAREN SEMI
+                    ;
+
+FormPars ::= 
+                (FormalParamList) FormParsList
+            |
+                (NoFormalParamList) /*epsilon*/
+            |
+                (ErrorFormalParamList) error:l
+                {: parser.report_error("Recovery made when defining formal parameters on line " + lleft, null); :}
+            ;
+         
+FormParsList ::=
+                    (FormalParams) FormParsList COMMA FormPar
+                |
+                    (FormalParamsMember) FormPar
+                ;
+             
+MethodVarDeclList ::= 
+                        (MethodVarDeclarationList) MethodVarDeclList VarDecl
+                    |
+                        (NoMethodVarDeclarationList) /*epsilon*/
+                    ;
+
+MethodStatementList ::= 
+                            (MethodStatements) MethodStatementList Statement
+                        |
+                            (NoMethodStatements) /*epsilon*/
+                        ;
+                      
+FormPar ::= 
+            (FormalParamVar) Type IDENT:varName
+        |
+            (FormalParamArr) Type IDENT:arrName LBOXBR RBOXBR
+        ;
+
+Type ::= (Type) IDENT:typeName
+    ;
+
+Statement ::= 
+                (DesignatorStmt) DesignatorStatement SEMI
+            |
+                (IfStatement) IF LPAREN Condition RPAREN Statement ElseStatement 
+            |
+                (ForLoop) FOR LPAREN ForDesignStmt SEMI ForCond SEMI ForDesignStmt RPAREN ForLoopEmpty Statement
+            |
+                (BreakStatement) BREAK SEMI
+            |
+                (ContinueStatement) CONTINUE SEMI
+            |
+                (ReturnStatementExpr) RETURN Expr SEMI
+            |
+                (ReturnStatementNoExpr) RETURN SEMI
+            |
+                (ReadStatement) READ LPAREN Designator RPAREN SEMI
+            |
+                (PrintStatement) PRINT LPAREN Expr PrintOptional RPAREN SEMI
+            |
+                (Statements) LBRACE StmtList RBRACE
+            ;
+          
+ForLoopEmpty ::= (ForLoopEmpty) /*epsilon*/
+            ;
+
+ElseStatement ::= 
+                    (MatchedIf) ELSE Statement
+                |
+                    (UnmatchedIf) /*epsilon*/
+                ;
+
+ForDesignStmt ::= 
+                    (ForDesignatorStatement) DesignatorStatement
+                |
+                    (NoForDesignatorStatement) /*epsilon*/
+                ;
+                      
+ForCond ::= 
+                (ForCondition) Condition
+            |
+                (NoForCondition) /*epsilon*/
+            |
+                (ErrorForCondition) error:l
+                {: parser.report_error("Recovery made when defining condition in for loop on line " + lleft, null); :}
+            ;					   	
+
+PrintOptional ::= 
+                    (PrintOption) COMMA NUMBER
+                | 
+                    (NoPrintOption) /*epsilon*/ 
+                ;
+
+StmtList ::=
+                (StatementList) StmtList Statement
+            |
+                (NoStatementList) /*epsilon*/
+            ;
+
+DesignatorStatement ::= 
+                        (DesignatorAssignment) DesignatorAssign 
+                    |
+                        (DesignatorPars) Designator LPAREN OptionalActPars RPAREN
+                    |
+                        (DesignatorInc) Designator INC
+                    |
+                        (DesignatorDec) Designator DEC
+                    ;
+                    
+DesignatorAssign ::=
+                        (DesignatorAssignExpression) Designator Assignop Expr 
+                    |
+                        (ErrorDesignatorAssignExpression) error:l
+                        {: parser.report_error("Recovery made when assigning value on line " + lleft + ", grammatical rules not fulfilled", null); :}
+                    ;
+             
+OptionalActPars ::=
+                    (ActualParams) ActPars
+                |
+                    (NoActualParams) /*epsilon*/
+                ;
+
+ActPars ::= (ActPars) ExprList
+        ; 
+
+ExprList ::= 
+                (Expressions) ExprList COMMA Expr
+            |
+                (ExpressionsMember) Expr
+            ;  
+       
+Condition ::= (Condition) CondTermList
+            ;
+
+CondTermList ::=
+                    (CondTerms) CondTermList OR CondTerm
+                |
+                    (CondTermsMember) CondTerm
+                ;
+
+CondTerm ::= 
+                (CondFactors) CondTerm AND CondFact
+            |
+                (CondFactorsMember) CondFact
+            ;
+
+CondFact ::= 
+                (CondFactRelationalExpression) Expr:expr0 Relop Expr:expr1
+            |
+                (CondFactNoRelationalExpression) Expr
+            ;
+
+Relop ::= 
+            (Equal) EQUAL
+        |
+            (NotEqual) NOT_EQUAL
+        |
+            (Grt) GRT
+        |
+            (Grte) GRTE
+        |
+            (Less) LESS
+        |
+            (Lesse) LESSE
+        ;
+      
+Expr ::= (Expr) TermListExt
+        ;
+     
+TermListExt ::=
+                    (TermListExtRecursive) TermList Assignop TermListExt 
+                |
+                    (TermListExtMember) TermList	
+                ;
+
+TermList ::=
+                (TermListRecursive) TermList AddopLeft Term
+            |
+                (TermListMember) FirstTerm:term	
+            ;
+         
+FirstTerm ::=
+                (NoMinusFirstTerm) Term
+            |
+                (MinusFirstTerm) MINUS Term
+            ;
+
+Term ::=
+            (TermRecursive) Term MulopLeft Factor
+        |
+            (TermMember) Factor
+        ;
+     
+Factor ::= 
+                (FactorDesignator) Designator
+        |
+                (FactorDesignatorFunction) Designator LPAREN OptionalActPars RPAREN
+        |
+                (FactorNumber) NUMBER:factorNumber
+        |
+                (FactorCharacter) CHAR:factorCharacter
+        |
+                (FactorBoolean) BOOL:factorBoolean
+        |
+                (FactorNewArray) NEW Type LBOXBR Expr RBOXBR
+        |
+                (FactorNewObject) NEW Type 
+        |
+                (FactorExpression) LPAREN Expr RPAREN 
+        ;
+
+Designator ::=
+                (DesignatorElement) DesignatorArr LBOXBR Expr RBOXBR 
+            |
+                (DesignatorNotElement) IDENT:name
+            ;
+
+DesignatorArr ::= (DesignatorArr) IDENT:name
+            ;
+
+Assignop ::= 
+                (Assignment) ASSIGN
+            |
+                (AssignmentAdd) AddopRight
+            |
+                (AssignmentMul) MulopRight	
+            ;
+         
+AddopLeft ::=
+                (AddopPlus) PLUS
+            |
+                (AddopMinus) MINUS
+            ;
+
+AddopRight ::= 
+                (AddopRightPlus) PLUS_ASSIGN
+            |
+                (AddopRightMinus) MINUS_ASSIGN
+            ;
+
+MulopLeft ::=
+                (MulopMul) MUL
+            |
+                (MulopDiv) DIV
+            |
+                (MulopMod) MOD
+            ;
+         
+MulopRight ::= 
+                (MulopRightMul) MUL_ASSIGN
+            |
+                (MulopRightDiv) DIV_ASSIGN
+            |
+                (MulopRightMod) MOD_ASSIGN
+            ;

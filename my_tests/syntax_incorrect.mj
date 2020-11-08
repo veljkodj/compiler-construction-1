@@ -1,0 +1,31 @@
+program syntax_incorrect
+
+	int apples = 100;
+	
+	class Dot {
+		int x = 0;
+		int y = 0;
+	}
+	
+	abstract class Letter {
+		char c = 'v';
+	}
+	
+{
+	int f(int x, int a[)
+		int r = 69;
+	{
+		
+		r = 29 * 4 - ;
+		
+		return 0;
+	}
+	
+	int main()
+		int i;
+	{
+		for (i = 0; i <  ; i++) {
+			i++;
+		}
+	}
+}
